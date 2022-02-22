@@ -1,8 +1,10 @@
 import os
-from io import open
-import torch
 
-class Dictionary(object):
+import torch
+import torchtext
+
+
+class Dictionary:
     def __init__(self):
         self.word2idx = {}
         self.idx2word = []
@@ -17,32 +19,33 @@ class Dictionary(object):
         return len(self.idx2word)
 
 
-class Corpus(object):
-    def __init__(self, path):
+class Corpus:
+    def __init__(self):
         self.dictionary = Dictionary()
-        self.train = self.tokenize(os.path.join(path, 'train.txt'))
-        self.valid = self.tokenize(os.path.join(path, 'valid.txt'))
-        self.test = self.tokenize(os.path.join(path, 'test.txt'))
+        data_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
-    def tokenize(self, path):
-        """Tokenizes a text file."""
-        assert os.path.exists(path)
+        train_dataset = torchtext.datasets.WikiText2(root=data_dir, split="train")
+        valid_dataset = torchtext.datasets.WikiText2(root=data_dir, split="valid")
+        test_dataset = torchtext.datasets.WikiText2(root=data_dir, split="test")
+        self.train = self.tokenize(train_dataset)
+        self.valid = self.tokenize(valid_dataset)
+        self.test = self.tokenize(test_dataset)
+
+    def tokenize(self, dataset):
+        """Tokenizes a dataset."""
         # Add words to the dictionary
-        with open(path, 'r', encoding="utf8") as f:
-            for line in f:
-                words = line.split() + ['<eos>']
-                for word in words:
-                    self.dictionary.add_word(word)
+        for line in dataset:
+            words = line.split() + ["<eos>"]
+            for word in words:
+                self.dictionary.add_word(word)
 
         # Tokenize file content
-        with open(path, 'r', encoding="utf8") as f:
-            idss = []
-            for line in f:
-                words = line.split() + ['<eos>']
-                ids = []
-                for word in words:
-                    ids.append(self.dictionary.word2idx[word])
-                idss.append(torch.tensor(ids).type(torch.int64))
-            ids = torch.cat(idss)
-
+        idss = []
+        for line in dataset:
+            words = line.split() + ["<eos>"]
+            ids = []
+            for word in words:
+                ids.append(self.dictionary.word2idx[word])
+            idss.append(torch.tensor(ids).type(torch.int64))
+        ids = torch.cat(idss)
         return ids
